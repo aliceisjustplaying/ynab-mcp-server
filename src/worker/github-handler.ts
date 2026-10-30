@@ -43,6 +43,9 @@ function decodeState(state: string): AuthRequest {
 export const GitHubHandler = {
   async fetch(request: Request, env: WorkerEnv & { OAUTH_PROVIDER: OAuthHelpers }): Promise<Response> {
     const url = new URL(request.url);
+    if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET || !env.ALLOWED_GITHUB_LOGIN) {
+      return new Response("GitHub authentication is not configured", { status: 503 });
+    }
 
     if (url.pathname === "/authorize") {
       let authRequest: AuthRequest;

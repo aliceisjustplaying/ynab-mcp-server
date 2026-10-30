@@ -7,26 +7,17 @@
 		"nodejs_compat"
 	],
 	"observability": {
-		"enabled": true
+		"enabled": false
 	},
 	// Hourly. The job itself only acts in NAG_HOUR local time, so the reminder
 	// keeps its wall-clock slot across daylight saving changes.
 	"triggers": {
 		"crons": ["0 * * * *"]
 	},
-	"kv_namespaces": [
-		{
-			// OAuth grants and tokens. Create with:
-			//   npx wrangler kv namespace create OAUTH_KV
-			"binding": "OAUTH_KV",
-			"id": "REPLACE_WITH_KV_NAMESPACE_ID",
-			"remote": true
-		}
-	],
 	"vars": {
 		// Deployment-specific values and credentials are set with
 		// `wrangler secret put`, never committed here.
-		"YNAB_READ_ONLY": "false",
+		"MCP_AUTH_MODE": "secret",
 		// Categorize reminders are disabled unless NAG_CALENDAR_ID and the
 		// GOOGLE_SERVICE_ACCOUNT_JSON secret are configured for a deployment.
 		"NAG_TIMEZONE": "America/Los_Angeles",

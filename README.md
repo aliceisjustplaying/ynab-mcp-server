@@ -19,9 +19,10 @@ It runs two ways from one codebase:
 
 - **Local (stdio)** — a child process of Claude Code or Claude Desktop on your
   own machine. Simplest, but only works on that machine while it is running.
-- **Remote (Cloudflare Worker)** — deployed behind GitHub sign-in and added to
-  claude.ai as a custom connector, so it works from the web and the mobile app
-  with your computer switched off. See [DEPLOY.md](./DEPLOY.md).
+- **Remote (Cloudflare Worker)** — deployed behind a shared secret (or the
+  optional GitHub sign-in) and added to claude.ai as a custom connector, so it
+  works from the web and the mobile app with your computer switched off. See
+  [DEPLOY.md](./DEPLOY.md).
 
 Both entry points register the same tools from `src/registry.ts`, so a tool
 written once is available in both.
@@ -77,27 +78,33 @@ claude.ai or the Claude mobile app, deploy `src/worker/` to Cloudflare Workers
 and add it as a custom connector. [DEPLOY.md](./DEPLOY.md) has the full walk
 through; the shape of it:
 
-1. Copy `wrangler.example.jsonc` to the git-ignored `wrangler.jsonc`, run
-   `npx wrangler login`, then create the `OAUTH_KV` namespace
-2. `npm run deploy` once to learn your `*.workers.dev` hostname
-3. Create a GitHub OAuth app whose callback is `https://<host>/callback`
-4. Use `npx wrangler secret put` for `ALLOWED_GITHUB_LOGIN`, `YNAB_API_TOKEN`,
-   `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and `TYPESAFE_API_KEY`
-5. Run `npm run deploy` again
-6. Add `https://<host>/mcp` as a custom connector in claude.ai
+1. Copy `wrangler.example.jsonc` to the git-ignored `wrangler.jsonc` (it sets
+   `MCP_AUTH_MODE` to `secret`) and run `npx wrangler login`
+2. `npm run deploy`; the Worker answers `503` until its secrets are set
+3. Generate a 64-character `MCP_SHARED_SECRET` into a protected file and use
+   `npx wrangler secret put` for it, `YNAB_API_TOKEN`, and optionally
+   `TYPESAFE_API_KEY`
+4. Add `https://<host>/mcp` as a custom connector in claude.ai, sending
+   `Authorization: Bearer <secret>` as a request header (a limited beta;
+   DEPLOY.md covers the fallback)
 
-The YNAB token stays a Worker secret and never reaches the client. GitHub sign-in
-controls **who may connect** to the remote Worker; the YNAB Personal Access
+GitHub sign-in remains available as an optional mode; DEPLOY.md covers its
+OAuth app and `OAUTH_KV` setup.
+
+The YNAB token stays a Worker secret and never reaches the client. The Worker's
+authentication layer controls **who may connect**; the YNAB Personal Access
 Token controls **which YNAB account it reaches**. They answer different
-questions, and neither substitutes for the other. The Worker uses one
-server-wide YNAB token, so anyone admitted through the GitHub gate reaches the
-deployer's YNAB account, money, and every plan available to that token—not
-their own YNAB account.
+questions, and neither substitutes for the other. `MCP_AUTH_MODE` picks the
+layer: `secret` (the template's setting) admits anyone who presents
+`MCP_SHARED_SECRET` as a Bearer token at `/mcp` or in the `/<secret>/mcp` path,
+while `github` or no mode at all keeps the GitHub sign-in that refuses every
+account other than `ALLOWED_GITHUB_LOGIN`. The Worker uses one server-wide YNAB
+token, so anyone admitted reaches the deployer's YNAB account, money, and every
+plan available to that token—not their own YNAB account.
 `ynab_list_plans` lists all of those plans, and a caller-supplied `planId`
-overrides the optional `YNAB_PLAN_ID` default. Any GitHub account other than
-`ALLOWED_GITHUB_LOGIN` is refused. This matters because the tool set can create
-and delete transactions—an unauthenticated endpoint would grant access to those
-plans to anyone who found the URL.
+overrides the optional `YNAB_PLAN_ID` default. This matters because the tool
+set can create and delete transactions—an unauthenticated endpoint, or a leaked
+shared secret, would grant access to those plans to anyone who had the URL.
 
 ## Why not YNAB OAuth?
 

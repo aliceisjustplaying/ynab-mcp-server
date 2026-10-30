@@ -6,11 +6,13 @@ export interface WorkerEnv {
   YNAB_PLAN_ID?: string;
   /** Deprecated but still accepted compatibility alias; no removal date. */
   YNAB_BUDGET_ID?: string;
+  MCP_AUTH_MODE?: "github" | "secret";
+  MCP_SHARED_SECRET?: string;
   /** GitHub OAuth app credentials, used only to identify the caller. */
-  GITHUB_CLIENT_ID: string;
-  GITHUB_CLIENT_SECRET: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
   /** The single GitHub login allowed to use this server. */
-  ALLOWED_GITHUB_LOGIN: string;
+  ALLOWED_GITHUB_LOGIN?: string;
   /** Set to "true" to expose only the read-only tools. */
   YNAB_READ_ONLY?: string;
   /** TypeSafe API credential for the optional category suggestion preview. */

@@ -3,6 +3,7 @@ import OAuthProvider from "@cloudflare/workers-oauth-provider";
 import { GitHubHandler } from "./github-handler.js";
 import { McpApiHandler } from "./mcp.js";
 import { runNag } from "./nag.js";
+import { handleSecretRequest } from "./secret-handler.js";
 import type { WorkerEnv } from "./env.js";
 
 const provider = new OAuthProvider({
@@ -16,6 +17,12 @@ const provider = new OAuthProvider({
 
 export default {
   fetch(request: Request, env: WorkerEnv, ctx: ExecutionContext): Promise<Response> {
+    if (env.MCP_AUTH_MODE === "secret") {
+      return handleSecretRequest(request, env);
+    }
+    if (env.MCP_AUTH_MODE !== undefined && env.MCP_AUTH_MODE !== "github") {
+      return Promise.resolve(new Response("Invalid authentication mode", { status: 503 }));
+    }
     return provider.fetch(request, env as any, ctx);
   },
 
@@ -28,7 +35,7 @@ export default {
       const outcome = await runNag(env);
       console.log("nag:", JSON.stringify(outcome));
 
-      if (outcome.ran) {
+      if (outcome.ran && (env.MCP_AUTH_MODE === undefined || env.MCP_AUTH_MODE === "github")) {
         // Piggyback the OAuth housekeeping on a run that already did work.
         const purged = await provider.purgeExpiredData(env as any);
         console.log("oauth purge:", JSON.stringify(purged));
